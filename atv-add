@@ -1,0 +1,12 @@
+#!/bin/sh
+# atv-add
+pkg="$1"; name="$2"
+[ -n "$pkg" ] && [ -n "$name" ] || { echo 'Aufruf: atv-add PAKET "Name"'; exit 1; }
+cat > "$HOME/.local/share/applications/atv-$pkg.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$name
+Exec=$HOME/.local/bin/atv-launch $pkg
+Icon=$HOME/.local/share/waydroid/data/icons/$pkg.png
+Categories=AudioVideo;Video;
+EOF
