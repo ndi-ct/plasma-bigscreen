@@ -1,0 +1,25 @@
+#!/bin/sh
+# atv-launch
+pkg="$1"
+[ -n "$pkg" ] || exit 1
+ready() { [ "$(waydroid prop get sys.boot_completed 2>/dev/null)" = "1" ]; }
+if ! ready; then
+  systemctl --user start waydroid-session.service
+  i=0; until ready || [ $i -ge 90 ]; do sleep 1; i=$((i+1)); done
+fi
+dev="$(waydroid status | awk '/^IP address:/ {print $3}'):5555"
+adb connect "$dev" >/dev/null
+# warten, bis Android Internet hat
+i=0
+until adb -s "$dev" shell ping -c 1 -W 1 1.1.1.1 >/dev/null 2>&1 || [ $i -ge 30 ]; do
+  sleep 1; i=$((i+1))
+done
+resolve() {
+  adb -s "$dev" shell cmd package resolve-activity --brief \
+    -a android.intent.action.MAIN -c "$1" "$pkg" | tail -n 1 | tr -d '\r'
+}
+act=$(resolve android.intent.category.LEANBACK_LAUNCHER)
+case "$act" in */*) ;; *) act=$(resolve android.intent.category.LAUNCHER) ;; esac
+case "$act" in */*) ;; *) echo "Keine Start-Activity für $pkg" >&2; exit 1 ;; esac
+adb -s "$dev" shell am start -n "$act" >/dev/null
+waydroid show-full-ui >/dev/null 2>&1
